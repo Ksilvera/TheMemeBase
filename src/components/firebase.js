@@ -1,9 +1,8 @@
-const firebase = require('firebase/app');
-require('firebase/auth');
-require("firebase/firestore");
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const config = {
-//paste config here
     apiKey: "AIzaSyBvYesg7q0LtaHpLcMjWXVGws3_v7axZgA",
     authDomain: "memebase-a6b9e.firebaseapp.com",
     databaseURL: "https://memebase-a6b9e.firebaseio.com",
@@ -12,13 +11,11 @@ const config = {
     messagingSenderId: "291815216399"
 };
 
+const app = initializeApp(config);
 
+const db = getFirestore(app);
 
-firebase.initializeApp(config);
-let db = firebase.firestore();
-db.settings({timestampsInSnapshots: true})
-let auth = firebase.auth();
-export default {
-    firestore: db,
-    auth: auth
-};
+const auth = getAuth(app);
+
+export {db, auth};
+

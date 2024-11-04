@@ -1,106 +1,92 @@
-import React, {Component} from 'react';
+import React, { useEffect, useState} from 'react';
 
 import './App.css';
-import MemeGenerator from "./MemeGenerator"
-import {HashRouter, Redirect, Route} from "react-router-dom";
-import Login from "./Login"
-import firebase from "./firebase"
+import MemeGenerator from "./components/MemeGenerator"
+import {HashRouter, Link, Navigate, Route, Routes} from "react-router-dom";
+import Login from "./components/Login"
+import {auth} from "./components/firebase"
 import {Nav, Navbar, NavItem} from "react-bootstrap";
 import {LinkContainer} from "react-router-bootstrap"
-import MemeList from "./MemeList"
+import MemeList from "./components/MemeList"
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
-class App extends Component {
+function App(){
+    const [user, setUser] = useState(undefined);
 
-    constructor(props) {
-        super(props);
-        this.state={};
-    }
-
-    componentWillMount() {
-        var _this = this;
-        firebase.auth.onAuthStateChanged(function (user) {
-            _this.setState({user: user});
-        }, function (error) {
-            console.log(error);
+    useEffect(() => {
+        const unsubsribe = onAuthStateChanged(auth, user => {
+            setUser(user);
+        }, error => {
+            console.error(error);
         });
 
-    }
+        return () => unsubsribe();
+    }, []);
 
-    render() {
-        let nav;
-        if(this.state.user){
-            nav = <Nav>
-                <LinkContainer to={"/generate"}>
-                    <NavItem>Generate Memes</NavItem>
+    let nav;
+    if(user){
+        nav = (
+            <Nav>
+                <LinkContainer to="/generate">
+                    <Nav.Item>Generate Memes</Nav.Item>
                 </LinkContainer>
-                <LinkContainer to={"/saved"}>
-                    <NavItem>View Saved Memes</NavItem>
+                <LinkContainer to="/saved">
+                    <Nav.Item>View Saved Memes</Nav.Item>
                 </LinkContainer>
-                <LinkContainer to={"/logout"}><NavItem>Logout</NavItem></LinkContainer>
-            </Nav>
-        }
-        else {
-           nav = <Nav>
-                <LinkContainer to={"/login"}>
-                    <NavItem>Register/sign-in to generate memes</NavItem>
+                <LinkContainer>
+                    <Nav.Item onClick={()=>auth.signOut()}>Logout</Nav.Item>
                 </LinkContainer>
             </Nav>
-        }
-        if(this.state.user === undefined)
-            return <span>Loading</span>
-        return (
-            <HashRouter>
-                <div className="App">
-                    <Navbar>
-                        <Navbar.Header>
-                            <LinkContainer to={"/"}>
-                                <Navbar.Brand>(the)Memebase v4</Navbar.Brand>
-                            </LinkContainer>
-                        </Navbar.Header>
-                        {nav}
-
-                    </Navbar>
-                    <div className={"content"}>
-
-                        <div className={"container"}>
-                            <Route exact path={"/"} render={(props) => <MemeList isUnfiltered={true} user={this.state.user} />} />
-                            <Route exact path={"/login"} component={Login}/>
-                            <Route exact path={"/logout"} component={Logout}/>
-                            <PrivateRoute path={"/saved"} component={MemeList} user={this.state.user} />
-                            <PrivateRoute path={"/generate"} component={MemeGenerator}  user={this.state.user} />
-                        </div>
-                    </div>
-                </div>
-            </HashRouter>
+        );
+    }else{
+        nav = (
+            <Nav>
+                <LinkContainer to="/login">
+                    <Nav.Item>Register/Sign-in to generate memes</Nav.Item>
+                </LinkContainer>
+            </Nav>
         );
     }
 
+    if(user === undefined)
+        return <span>Loading</span>;
 
-}
-
-function Logout() {
-    firebase.auth.signOut();
-    return <Redirect to="/"/>
-}
-
-function PrivateRoute({component: Component, user: User, ...rest}) {
-    return (
-        <Route
-            {...rest}
-            render={props =>
-                User ? (
-                    <Component {...props} user = {User} />
-                ) : (
-                    <Redirect
-                        to={{
-                            pathname: "/login",
-                            state: {from: props.location}
-                        }}
-                    />
-                )
-            }
-        />
+    return(
+        <HashRouter>
+            <div className='App'>
+                <Navbar>
+                    <Navbar.Brand>
+                        <LinkContainer to="/">
+                            <span>(the)Memebase v4</span>
+                        </LinkContainer>
+                    </Navbar.Brand>
+                    {nav}
+                </Navbar>
+                <div className='content'>
+                    <div className='container'>
+                        <Routes>
+                            <Route path = "/" element={<MemeList isUnfiltered={true} user={user} />}/>
+                            <Route path="/login" element={<Login/>}/>
+                            <Route path="/logout" element={<Logout/>}/>
+                            <Route path="/saved" element={<PrivateRoute component={MemeList} user={user} /> }/>
+                            <Route path="/generate" element={<PrivateRoute component={MemeGenerator} user={user}/>}/>
+                        </Routes>
+                    </div>
+                </div>
+            </div>
+        </HashRouter>
     );
-}
+};
+
+const Logout = () =>{
+    useEffect(() => {
+        auth.signOut();
+    },[]);
+    return <Navigate to="/"/>
+};
+
+const PrivateRoute = ({component: Component, user}) => {
+    return user ? <Component/> : <Navigate to='/login'/>;
+};
 
 export default App;
